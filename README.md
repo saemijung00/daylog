@@ -1,6 +1,8 @@
-# 하루의 결 · 계획 대비 실제 활동
+# daylog · 계획 대비 실제 활동
 
-설치할 라이브러리 없이 동작하는 GitHub Pages용 정적 사이트입니다. 현재 샘플 화면이며 실제 개인 기록은 포함하지 않습니다. 저장소·배포 대상 확인 전에는 업로드하지 않습니다.
+설치할 라이브러리 없이 동작하는 GitHub Pages용 정적 사이트입니다. 현재 샘플 화면이며 실제 개인 기록은 포함하지 않습니다. 저장소: https://github.com/saemijung00/daylog
+
+사이트: https://saemijung00.github.io/daylog/
 
 ## 안전한 기본 구성
 
@@ -48,9 +50,7 @@ Node.js 22 이상: `npm test`
 
 ## Pages 배포
 
-`.github/workflows/pages.yml`은 수동 실행 전용입니다. GitHub 저장소의 Settings → Pages → Source를 GitHub Actions로 선택한 뒤 실행합니다. docs/만 배포하며 비공개 설정·스크립트는 배포하지 않습니다. 하위 경로에서도 상대 주소로 동작합니다. 초기 배포는 화면만 포함하고 사용자 개인 파일은 선택해서 열도록 합니다.
-
-저장소와 호스팅 대상이 확정되기 전에는 워크플로 실행·푸시·공개 배포를 하지 않습니다.
+현재 배포는 GitHub Pages의 Deploy from a branch → main → /docs 설정을 사용합니다. main의 docs/ 변경이 자동 배포됩니다. 원본 JSON과 인증 정보는 업로드하지 않습니다. 공개되는 첫 화면은 샘플이며 사용자 기록은 암호화 파일을 선택해서 엽니다.
 
 ## 근거
 
