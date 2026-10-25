@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8fb">
   <title>DAYMARK · daylog</title><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.daymark.css">
 </head>
 <body>
 <div class="app">
@@ -46,6 +46,6 @@
   <div class="appnotice">DAYMARK · <strong>계획은 계획대로, 실제는 실제대로.</strong> 모든 원본 기록은 Google Calendar에 유지됩니다. <span id="syncText"></span></div>
 <dialog id="accessDialog"><form id="unlock"><div class="panel-head"><div><h2 class="panel-title">내 기록 열기</h2><p class="panel-sub">암호화한 파일을 이 브라우저 안에서 열어요.</p></div><button type="button" class="iconbutton" id="closeAccess" aria-label="닫기">×</button></div><label class="access-label">암호화 리포트 파일<input id="file" type="file" accept="application/json,.json"></label><label class="access-label">리포트 암호<input id="password" type="password" autocomplete="off" minlength="20" required></label><p class="panel-sub" id="message" role="status">암호와 기록은 브라우저에 저장하지 않습니다.</p><div class="access-actions"><button type="button" id="lock" class="outline-btn">기록 잠그기</button><button class="outline-btn primary">열기</button></div></form></dialog></main>
 </div>
-<script type="module" src="app.js"></script>
+<script type="module" src="app.daymark.js"></script>
 </body>
 </html>
