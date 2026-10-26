@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8fb">
   <title>DAYMARK · daylog</title><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <link rel="stylesheet" href="style.daymark.css">
+  <link rel="stylesheet" href="style.daymark.css?v=compare1">
 </head>
 <body>
 <div class="app">
@@ -31,7 +31,7 @@
   <div class="report-status" id="reportStatus" role="status"></div><section class="stats" id="stats"></section>
   <div class="layout">
     <div class="content-col">
-      <section class="panel" id="timelinePanel"><div class="panel-head"><div><h2 class="panel-title">계획과 실제 타임라인</h2><p class="panel-sub">계획된 시간과 실제 사용한 시간을 비교해요.</p></div><span class="mini-tag">DAILY TIMELINE</span></div><div id="timeline"></div></section>
+      <section class="panel" id="timelinePanel"><div class="panel-head"><div><h2 class="panel-title">계획과 실제, 나란히</h2><p class="panel-sub">같은 높이, 같은 시각. 시작 위치와 길이로 하루의 차이를 살펴보세요.</p></div><span class="mini-tag">DAILY TIMELINE</span></div><div id="timeline"></div></section>
       <section class="panel" id="trendsPanel" hidden><div class="panel-head"><div><h2 class="panel-title" id="trendTitle">이번 주 활동 흐름</h2><p class="panel-sub" id="trendSubtitle">요일별 활동 시간 비교</p></div><div class="chart-head-info"><span><i style="background:#9bb4e8"></i>계획</span><span><i style="background:#526fc8"></i>실제</span></div></div><div id="trendChart"></div></section>
       <section class="panel" id="recordsPanel"><div class="records-bar"><div><h2 class="panel-title">활동 기록</h2><div class="panel-sub" id="recordCount">시간순으로 기록을 확인하세요.</div></div><div class="segmented" id="recordTabs"><button class="selected" data-tab="actual">실제 기록</button><button data-tab="planned">계획</button></div></div><div class="filter-tools" style="margin-top:17px"><input class="search" type="search" id="searchInput" placeholder="작업 검색" aria-label="작업 검색"><select class="select" id="catFilter" aria-label="카테고리 필터"><option value="all">전체 캘린더</option></select></div><div class="record-list" id="recordList"></div></section>
       <section class="panel" id="guidePanel" hidden><div class="panel-head"><div><h2 class="panel-title">캘린더 분류 규칙</h2><p class="panel-sub">작업의 목적을 기준으로 분류하며, 실제 기록은 [실제]로 구별합니다.</p></div></div><div class="guide" id="guideContent"></div></section>
@@ -40,12 +40,12 @@
       <section class="panel" id="calendarPanel"><div class="month-head"><h2 class="panel-title" id="calendarMonth">2026년 10월</h2><div class="month-actions"><button id="prevMonth" aria-label="이전 달"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg></button><button id="nextMonth" aria-label="다음 달"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></button></div></div><div class="mini-month" id="miniCalendar"></div><div class="month-foot">● 표시된 날짜에 실제 활동 기록이 있어요.</div></section>
       <section class="panel" id="breakdownPanel"><div class="panel-head"><div><h2 class="panel-title">활동 구성</h2><p class="panel-sub">캘린더별 실제 사용 시간</p></div><button class="tiny-action" id="switchView" aria-label="주간 분석 보기">주간 보기 ↗</button></div><div class="breakdown"><div class="donut" id="donut"><div class="donut-hole"><b id="donutTotal">0분</b><small>기록된 시간</small></div></div><div class="cat-legend" id="categoryLegend"></div></div></section>
       <section class="panel" id="insightPanel"><div class="panel-head"><div><h2 class="panel-title">오늘의 인사이트</h2><p class="panel-sub">기록을 기반으로 정리했어요.</p></div><span class="mini-tag">INSIGHTS</span></div><div id="insights"></div></section>
-      <section class="panel" id="historyPanel" hidden><div class="panel-head"><div><h2 class="panel-title">하루 분석 · 진행 메모</h2><p class="panel-sub" id="historySource"></p></div></div><div id="historyContent" style="white-space:pre-wrap;line-height:1.8;padding:0 22px 22px;font-size:13px;overflow-wrap:anywhere"></div></section><section class="panel" id="notesPanel"><div class="panel-head"><div><h2 class="panel-title">미확인 구간</h2><p class="panel-sub">기록 없는 경과 시간 · 수면이나 휴식으로 추정하지 않아요</p></div></div><div id="notes"></div></section>
+      <section class="panel" id="historyPanel" hidden><div class="panel-head"><div><h2 class="panel-title">하루 분석 · 진행 메모</h2><p class="panel-sub" id="historySource"></p></div></div><div id="historyContent" style="white-space:pre-wrap;line-height:1.8;padding:0 22px 22px;font-size:13px;overflow-wrap:anywhere"></div></section>
     </div>
   </div>
   <div class="appnotice">DAYMARK · <strong>계획은 계획대로, 실제는 실제대로.</strong> 모든 원본 기록은 Google Calendar에 유지됩니다. <span id="syncText"></span></div>
 <dialog id="accessDialog"><form id="unlock"><div class="panel-head"><div><h2 class="panel-title">내 기록 열기</h2><p class="panel-sub">암호화한 파일을 이 브라우저 안에서 열어요.</p></div><button type="button" class="iconbutton" id="closeAccess" aria-label="닫기">×</button></div><label class="access-label">다른 리포트 파일 (선택 사항)<input id="file" type="file" accept="application/json,.json"></label><label class="access-label">리포트 암호<input id="password" type="password" autocomplete="off" minlength="20" required></label><p class="panel-sub" id="message" role="status">전달받은 암호화 리포트 파일을 선택하고 암호를 입력하세요. 기록은 읽어온 시점의 사본이며 자동 갱신되지 않습니다. 암호와 기록은 브라우저에 저장하지 않습니다.</p><div class="access-actions"><button type="button" id="lock" class="outline-btn">기록 잠그기</button><button class="outline-btn primary">열기</button></div></form></dialog></main>
 </div>
-<script type="module" src="app.daymark.js?v=history1"></script>
+<script type="module" src="app.daymark.js?v=compare1"></script>
 </body>
 </html>

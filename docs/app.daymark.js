@@ -1,4 +1,4 @@
-import {report,weekDates,validate} from './core.js?v=history1';
+import {report,weekDates,validate} from './core.js?v=compare1';
 
 'use strict';
 const CATEGORIES = [
@@ -53,24 +53,32 @@ function render(){
  $('dateLabel').firstChild.textContent=`${y}. ${Number(m)}. ${Number(dd)}. (${weekdayText})`;$('dateInput').value=date;
  const h=({day:['YOUR DAY, IN FOCUS','하루를 더 선명하게.','계획과 실제를 한눈에 비교하고, 시간의 흐름을 돌아보세요.'],records:['ACTIVITY LOG','하루의 모든 기록.','작업과 휴식, 메모까지 시간순으로 이어집니다.'],week:['WEEKLY OVERVIEW','이번 주의 흐름.','7일 동안의 계획과 실제 시간 차이를 살펴보세요.'],month:['MONTHLY OVERVIEW','시간이 쌓이는 방식.','한 달 동안 기록된 활동을 돌아보고 패턴을 확인하세요.'],guide:['CATEGORY RULES','나만의 분류 기준.','업무 목적에 따라 여섯 개 캘린더를 구분합니다.']})[view];
  $('headingTop').textContent=h[0];$('mainTitle').textContent=h[1];$('mainSubtitle').textContent=h[2];
- $('timelinePanel').hidden=!(view==='day');$('trendsPanel').hidden=!(view==='week'||view==='month');$('recordsPanel').hidden=(view==='guide'||view==='month'||view==='week');$('guidePanel').hidden=view!=='guide';
- $('insightPanel').hidden=view==='guide';$('notesPanel').hidden=view==='guide';
+ $('timelinePanel').hidden=!(view==='day');$('trendsPanel').hidden=!(view==='week'||view==='month');$('recordsPanel').hidden=view!=='records';$('guidePanel').hidden=view!=='guide';
+ $('insightPanel').hidden=view!=='day';
  $('breakdownPanel').hidden=view==='guide';
  $('switchView').textContent=view==='week'?'일간 보기 ↗':'주간 보기 ↗';$('switchView').setAttribute('aria-label',view==='week'?'일간 분석 보기':'주간 분석 보기');
- renderStats(d);renderMonth();renderBreakdown(d);renderInsights(d);renderHistory();renderNotes(d);renderTimeline(d);renderRecords(d);if(view==='week'||view==='month')renderTrend(view);if(view==='guide')renderGuide();
+ const summary=(view==='week'||view==='month')?periodStats(view):d;renderStats(summary);renderMonth();renderBreakdown(summary);renderInsights(d);renderHistory();renderTimeline(d);renderRecords(d);if(view==='week'||view==='month')renderTrend(view);if(view==='guide')renderGuide();
 }
 function renderStats(d){
- const cards=[['확인된 실제 시간',fmtMinutes(d.actualTotal),`${d.count}개 활동 · 겹친 시간은 한 번만`,'briefcase'],['계획 시간',fmtMinutes(d.planned),'하루 전체 계획 시간','calendar'],['계획 대비 차이',`${d.actualTotal>=d.planned?'+':'−'}${fmtMinutes(Math.abs(d.actualTotal-d.planned))}`,'실제 − 계획 · 진행 중 수치는 잠정','chart'],['미확인 시간',fmtMinutes(d.unknown),'기록 없는 경과 시간','clock']];
+ const cards=[['확인된 실제 시간',fmtMinutes(d.actualTotal),`${d.count}개 활동 구간 · 겹친 시간은 한 번만`,'briefcase'],['계획 시간',fmtMinutes(d.planned),d.period?'선택한 기간의 계획 합계':'하루 전체 계획 시간','calendar'],['계획 대비 차이',`${d.actualTotal>=d.planned?'+':'−'}${fmtMinutes(Math.abs(d.actualTotal-d.planned))}`,'총시간 차이 · 작업 이행률과는 달라요','chart'],];
  $('stats').innerHTML=cards.map(x=>`<article class="stat"><div class="stat-head"><div class="stat-label">${x[0]}</div><div class="stat-icon">${appIcon(x[3])}</div></div><div class="stat-value">${d.available?x[1]:'—'}</div><div class="stat-desc">${x[2]}</div></article>`).join('');
 }
 function renderTimeline(d){
- const all=d.plan.concat(d.actual);if(!all.length){$('timeline').innerHTML=empty('이 날짜에는 아직 일정이 없어요.');return;}
- const startHour=Math.max(0,Math.floor(Math.min(...all.map(x=>x.start-at(state.date)))/3600000)-1);
- const endHour=Math.min(24,Math.ceil(Math.max(...all.map(x=>x.end-at(state.date)))/3600000)+0);
- const maxHour=Math.max(startHour+2,endHour),spanMinutes=(maxHour-startHour)*60;
- const ticks=Array.from({length:maxHour-startHour+1},(_,i)=>`<span class="tick" style="left:${(i/(maxHour-startHour))*100}%">${pad(i+startHour)}:00</span>`).join('');
- function lane(rows,planned){let ends=[];const positioned=rows.map(r=>{const s=(r.start-at(state.date))/60000,e=(r.end-at(state.date))/60000;let level=ends.findIndex(t=>t<=s);if(level<0){level=ends.length;ends.push(e)}else ends[level]=e;return{...r,level,s,e}});const height=Math.max(52,ends.length*41+9);return `<div class="tl-track" style="height:${height}px;--step:${100/(maxHour-startHour)}%">${positioned.map(r=>{const left=(r.s-startHour*60)/spanMinutes*100,width=(r.e-r.s)/spanMinutes*100,color=planned?'':category(r.category).color;const duration=minutes(r);return `<div class="tl-event ${planned?'planned':''}" title="${esc(r.title+' · '+kstTime(r.start)+'–'+kstTime(r.end))}" style="top:${7+r.level*41}px;height:34px;left:${left}%;width:${Math.max(width,.35)}%;background:${planned?'':color};${duration<30?'padding:0 3px;':''}">${width>7?esc(r.title):''}</div>`}).join('')}</div>`}
- $('timeline').innerHTML=`<div class="timeline-overflow"><div class="timecontent"><div class="tl-axis"><div class="tl-axis-inner">${ticks}</div></div><div class="tl-row"><div class="tl-label">계획 <small>Planned</small></div>${lane(d.plan,true)}</div><div class="tl-row"><div class="tl-label">실제 <small>Actual</small></div>${lane(d.actual,false)}</div></div></div><div class="timeline-legend"><span class="legend-item"><i></i>계획</span><span class="legend-item"><i class="actual"></i>실제</span><span class="legend-note">블록에 마우스를 올리면 상세 시간이 표시돼요. 작은 화면은 좌우로 스크롤해 주세요.</span></div>`;
+ const all=d.plan.concat(d.actual);
+ if(!all.length){$('timeline').innerHTML=empty('이 날짜에는 아직 일정이 없어요.');return;}
+ const origin=at(state.date),first=Math.floor((Math.min(...all.map(e=>e.start))-origin)/3600000),last=Math.min(24,Math.max(first+1,Math.ceil((Math.max(...all.map(e=>e.end))-origin)/3600000)));
+ const hourHeight=84,height=(last-first)*hourHeight;
+ const time=t=>t===origin+DAY_MS?'24:00':kstTime(t);
+ const ticks=Array.from({length:last-first+1},(_,i)=>`<span style="top:${i*hourHeight}px">${pad(first+i)}:00</span>`).join('');
+ function lane(rows,planned){
+  const ends=[];const placed=rows.map(e=>{let col=ends.findIndex(t=>t<=e.start);if(col<0){col=ends.length;ends.push(e.end)}else ends[col]=e.end;return {...e,col};});
+  const cols=Math.max(1,ends.length);
+  return placed.map(e=>{const color=planned?'#718bb8':category(e.category).color,top=(e.start-origin-first*3600000)/3600000*hourHeight,size=(e.end-e.start)/3600000*hourHeight;
+   return `<button class="compare-event ${planned?'is-plan':'is-actual'}" style="top:${top}px;height:${Math.max(3,size-2)}px;left:calc(${e.col/cols*100}% + 3px);width:calc(${100/cols}% - 6px);--event-color:${color}" data-event="${esc(e.key)}" data-role="${e.role}" title="${esc(e.title+' · '+time(e.start)+'–'+time(e.end)+' · '+fmtMinutes(minutes(e)))}" aria-label="${esc((planned?'계획 ':'실제 ')+e.title+' '+time(e.start)+'부터 '+time(e.end))}"><strong>${esc(e.title)}</strong>${size>34?`<small>${time(e.start)}–${time(e.end)} · ${fmtDuration(minutes(e))}</small>`:''}</button>`;
+  }).join('');
+ }
+ $('timeline').innerHTML=`<div class="compare-heading"><span></span><b>계획 <small>${fmtMinutes(d.planned)}</small></b><b>실제 <small>${fmtMinutes(d.actualTotal)}</small></b></div><div class="compare-scroll"><div class="compare-grid" style="height:${height}px;--hour-height:${hourHeight}px"><div class="compare-hours">${ticks}</div><div class="compare-lane">${lane(d.plan,true)}</div><div class="compare-lane">${lane(d.actual,false)}</div></div></div><div class="compare-detail" id="compareDetail" aria-live="polite">블록을 누르면 활동명·시간·진행 메모를 볼 수 있어요.</div>`;
+ $('timeline').querySelectorAll('[data-event]').forEach(b=>b.onclick=()=>{const e=all.find(e=>e.key===b.dataset.event&&e.role===b.dataset.role);if(e)$('compareDetail').textContent=`${e.role==='plan'?'계획':'실제'} · ${e.title} · ${time(e.start)}–${time(e.end)} · ${fmtMinutes(minutes(e))}${e.note?'\n'+e.note:''}`;});
 }
 function renderMonth(){
  const [y,m]=state.date.split('-').map(Number);$('calendarMonth').textContent=`${y}년 ${m}월`;
@@ -94,20 +102,17 @@ function renderBreakdown(d){
 }
 function renderInsights(d){
  const items=d.available?[
- ['target','계획 시간대의 실제 기록',fmtMinutes(d.overlap)+' 동안 계획과 실제 시간대가 겹쳐요. 작업 완료율을 뜻하지는 않아요.'],
- ['clock','기록 확인',d.gaps.length?`${d.gaps.length}개 미확인 구간이 있어요. 아래에서 시간을 확인하세요.`:'경과한 시간에 미확인 구간이 없어요.']
+ ['target','비교 화면 읽는 법','왼쪽은 계획, 오른쪽은 실제예요. 같은 높이는 같은 시각이며, 블록의 길이는 소요시간을 뜻해요.'],
+ ['clock','시간과 작업을 함께 비교해요','시작 위치가 아래로 내려가면 늦게 시작한 활동이에요. 제목도 함께 확인해 어떤 작업으로 바뀌었는지 살펴보세요.']
  ]:[['calendar','동기화 범위 밖','이 날짜를 포함한 리포트 파일을 열어 주세요.']];
  if(d.conflict)items.push(['activity','분류가 겹치는 시간',fmtMinutes(d.conflict)+'을 분류별 시간에서 분리했어요.']);
  $('insights').innerHTML=items.map(([type,title,body])=>`<div class="insight-item"><span class="insight-icon">${appIcon(type)}</span><div><strong>${esc(title)}</strong><p>${esc(body)}</p></div></div>`).join('');
 }
 function renderHistory(){
  const archive=data.analyses?.[state.date];
- $('historyPanel').hidden=demo||!archive||state.view==='guide';
+ $('historyPanel').hidden=demo||!archive||state.view!=='records';
  $('historySource').textContent=archive?.source||'';
  $('historyContent').textContent=archive?.text||'';
-}
-function renderNotes(d){
- $('notes').innerHTML=!d.available?'<p class="panel-sub">동기화 범위 밖입니다.</p>':d.gaps.length?d.gaps.map(g=>`<div class="gap-row"><b>${kstTime(g.start)} – ${g.end===at(state.date)+DAY_MS?'24:00':kstTime(g.end)}</b><br>${fmtMinutes(Math.round((g.end-g.start)/60000))}</div>`).join(''):'<p class="panel-sub">미확인 구간이 없습니다.</p>';
 }
 function empty(text){return `<div class="empty"><div class="empty-icon">${appIcon('calendar')}</div>${esc(text)}</div>`;}
 function renderRecords(d){
@@ -116,14 +121,20 @@ function renderRecords(d){
  $('recordTabs').querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b.dataset.tab===state.tab));
  $('recordList').innerHTML=rows.length?rows.map(r=>`<div class="record"><div class="record-time">${kstTime(r.start)}<small>~ ${r.end===at(state.date)+DAY_MS?'24:00':kstTime(r.end)}</small></div><div class="record-line"><i style="background:${category(r.category).color}"></i></div><div style="min-width:0"><div class="record-title">${esc(r.title)}<span class="record-chip">${esc(r.category)}</span></div>${r.note?`<div class="record-note">${esc(r.note)}</div>`:''}</div><div class="record-duration">${fmtDuration(minutes(r))}</div></div>`).join(''):empty('선택한 날짜에 해당하는 기록이 없어요.');
 }
-function renderTrend(view){
+function periodDays(view){
  const [y,m]=state.date.split('-').map(Number),count=new Date(Date.UTC(y,m,0)).getUTCDate();
- const days=view==='week'?weekDates(state.date):Array.from({length:count},(_,i)=>`${y}-${pad(m)}-${pad(i+1)}`);
- const vals=days.map(date=>({date,...datasetStats(date)})),max=Math.max(1,...vals.flatMap(x=>[x.planned,x.actualTotal]));
- $('trendTitle').textContent=view==='week'?'이번 주 활동 흐름':`${m}월 활동 기록`;
- $('trendSubtitle').textContent=`${days[0]} ~ ${days.at(-1)} · 전체 활동 · 동기화 범위 밖은 — 표시`;
- $('trendChart').innerHTML=view==='week'?`<div class="chart-row">${vals.map((x,i)=>`<button class="chart-col ${x.date===state.date?'current':''}" data-day="${x.date}" aria-label="${x.date} ${x.available?'실제 '+fmtMinutes(x.actualTotal):'동기화 범위 밖'}"><div class="chart-bars"><div class="chart-bar" style="height:${x.planned/max*168}px;background:#cbd8ef"></div><div class="chart-bar" style="height:${x.actualTotal/max*168}px;background:#567aca"></div></div><span class="chart-label">${['월','화','수','목','금','토','일'][i]}<br>${x.available?fmtDuration(x.actualTotal):'—'}</span></button>`).join('')}</div>`:`<div class="monthly-chart">${vals.map((x,i)=>`<button class="monthly-col ${x.available?'':'out'} ${x.date===state.date?'selected':''}" data-day="${x.date}" aria-label="${x.date} ${x.available?'실제 '+fmtMinutes(x.actualTotal):'동기화 범위 밖'}" title="${x.date} · ${x.available?fmtMinutes(x.actualTotal):'—'}"><div style="height:${x.available?x.actualTotal/max*100:2}%"></div></button>`).join('')}</div><div class="month-axis"><span>1일</span><span>${count}일</span></div>`;
- $('trendChart').querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{state.view='day';setDate(b.dataset.day);setActiveView('day');});
+ return view==='week'?weekDates(state.date):Array.from({length:count},(_,i)=>`${y}-${pad(m)}-${pad(i+1)}`);
+}
+function periodStats(view){
+ const rows=periodDays(view).map(date=>datasetStats(date)).filter(d=>d.available);
+ return {period:true,available:rows.length>0,actualTotal:rows.reduce((s,d)=>s+d.actualTotal,0),planned:rows.reduce((s,d)=>s+d.planned,0),count:rows.reduce((s,d)=>s+d.count,0),conflict:rows.reduce((s,d)=>s+d.conflict,0),totals:Object.fromEntries(CATEGORIES.map(c=>[c.key,rows.reduce((s,d)=>s+d.totals[c.key],0)]))};
+}
+function renderTrend(view){
+ const days=periodDays(view),vals=days.map(date=>({date,...datasetStats(date)})),max=Math.max(60,...vals.flatMap(x=>[x.planned,x.actualTotal]));
+ $('trendTitle').textContent=view==='week'?'요일별 계획과 실제':`${Number(state.date.slice(5,7))}월 · 날짜별 계획과 실제`;
+ $('trendSubtitle').textContent=`${days[0]} ~ ${days.at(-1)} · 식사·이동 등 전체 활동 포함 · 시간의 양을 비교하며, 작업 완료율은 아니에요.`;
+ $('trendChart').innerHTML=`<div class="period-chart">${vals.map(x=>`<button class="period-row" data-day="${x.date}" aria-label="${x.date} ${x.available?'계획 '+fmtMinutes(x.planned)+', 실제 '+fmtMinutes(x.actualTotal):'동기화 범위 밖'}"><span class="period-date">${Number(x.date.slice(8))}일 <small>${weekday(x.date)}</small></span><span class="period-bars"><span class="period-bar plan-bar" style="width:${x.planned/max*100}%"></span><span class="period-bar actual-bar" style="width:${x.actualTotal/max*100}%"></span></span><span class="period-values">${x.available?`${fmtDuration(x.planned)} / ${fmtDuration(x.actualTotal)}<small>${x.closed?'':'진행 중 · '}${x.actualTotal>=x.planned?'+':'−'}${fmtDuration(Math.abs(x.actualTotal-x.planned))}</small>`:'—'}</span></button>`).join('')}</div><p class="period-help">단위: 시간·분 · 위 막대 / 아래 막대 = 계획 / 실제 · 날짜를 누르면 그날의 비교 화면을 엽니다. 동기화 범위 밖은 —로 표시합니다.</p>`;
+ $('trendChart').querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{state.date=b.dataset.day;setActiveView('day');});
 }
 function renderGuide(){$('guideContent').innerHTML=CATEGORIES.map(c=>`<div class="guide-item"><h4><i style="background:${c.color}"></i>${esc(c.label)}</h4><p>${esc(c.desc)}</p></div>`).join('')}
 function init(){
