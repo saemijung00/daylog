@@ -1,4 +1,4 @@
-import {report,weekDates,validate} from './core.js';
+import {report,weekDates,validate} from './core.js?v=history1';
 
 'use strict';
 const CATEGORIES = [
@@ -35,7 +35,7 @@ const sample=structuredClone(data);
 function within(date){return date>=data.coverage.from&&date<data.coverage.to;}
 function datasetStats(date=state.date){
  const r=report(within(date)?data.events:[],date,Math.min(Date.now(),Date.parse(data.generatedAt)));
- const rows=r.entries.map(e=>({...e,kind:e.role==='plan'?'planned':'actual',note:''}));
+ const rows=r.entries.map(e=>({...e,kind:e.role==='plan'?'planned':'actual',note:[e.note,e.classificationNote].filter(Boolean).join(' · ')}));
  return {...r,actualTotal:r.actual,plan:rows.filter(e=>e.role==='plan'),actual:rows.filter(e=>e.role==='actual'),count:rows.filter(e=>e.role==='actual').length,available:within(date)};
 }
 function appIcon(type){const p={clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',briefcase:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',chart:'<path d="M4 20V11M10 20V5M16 20v-8M22 20V3"/>',activity:'<path d="M3 12h4l3-7 4 14 3-7h4"/>',target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',note:'<path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/>',calendar:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/>'};return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p[type]||p.clock}</svg>`}
@@ -45,8 +45,8 @@ function changeMonth(step){const [y,m]=state.date.slice(0,7).split('-').map(Numb
 function render(){
  
  const view=state.view,d=datasetStats();
- $('connection').className='live'+(demo?' demo':'');$('connection').lastElementChild.textContent=demo?'샘플 데이터':'내 기록 열림';
- $('syncText').textContent=demo?'· 실제 기록이 아닌 샘플입니다.':'· 마지막 동기화 '+new Date(data.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
+ $('connection').className='live'+(demo?' demo':'');$('connection').lastElementChild.textContent=demo?'샘플 데이터':'Google Calendar 기록';
+ $('syncText').textContent=demo?'· 실제 기록이 아닌 샘플입니다.':'· 캘린더를 읽어온 시점 '+new Date(data.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
  $('reportStatus').textContent=!d.available?'동기화 범위 밖 날짜입니다.':(demo?'샘플 · ':'')+(d.closed?'자정 리포트 · 종료된 하루':'진행 중 · 동기화 시점까지 잠정 집계')+' · Asia/Seoul';
  $('crumb').textContent=({day:'대시보드',records:'활동 기록',week:'주간 분석',month:'월간 분석',guide:'분류 가이드'})[view];
  const date=state.date,weekdayText=weekday(date),[y,m,dd]=date.split('-');
@@ -57,7 +57,7 @@ function render(){
  $('insightPanel').hidden=view==='guide';$('notesPanel').hidden=view==='guide';
  $('breakdownPanel').hidden=view==='guide';
  $('switchView').textContent=view==='week'?'일간 보기 ↗':'주간 보기 ↗';$('switchView').setAttribute('aria-label',view==='week'?'일간 분석 보기':'주간 분석 보기');
- renderStats(d);renderMonth();renderBreakdown(d);renderInsights(d);renderNotes(d);renderTimeline(d);renderRecords(d);if(view==='week'||view==='month')renderTrend(view);if(view==='guide')renderGuide();
+ renderStats(d);renderMonth();renderBreakdown(d);renderInsights(d);renderHistory();renderNotes(d);renderTimeline(d);renderRecords(d);if(view==='week'||view==='month')renderTrend(view);if(view==='guide')renderGuide();
 }
 function renderStats(d){
  const cards=[['확인된 실제 시간',fmtMinutes(d.actualTotal),`${d.count}개 활동 · 겹친 시간은 한 번만`,'briefcase'],['계획 시간',fmtMinutes(d.planned),'하루 전체 계획 시간','calendar'],['계획 대비 차이',`${d.actualTotal>=d.planned?'+':'−'}${fmtMinutes(Math.abs(d.actualTotal-d.planned))}`,'실제 − 계획 · 진행 중 수치는 잠정','chart'],['미확인 시간',fmtMinutes(d.unknown),'기록 없는 경과 시간','clock']];
@@ -100,6 +100,12 @@ function renderInsights(d){
  if(d.conflict)items.push(['activity','분류가 겹치는 시간',fmtMinutes(d.conflict)+'을 분류별 시간에서 분리했어요.']);
  $('insights').innerHTML=items.map(([type,title,body])=>`<div class="insight-item"><span class="insight-icon">${appIcon(type)}</span><div><strong>${esc(title)}</strong><p>${esc(body)}</p></div></div>`).join('');
 }
+function renderHistory(){
+ const archive=data.analyses?.[state.date];
+ $('historyPanel').hidden=demo||!archive||state.view==='guide';
+ $('historySource').textContent=archive?.source||'';
+ $('historyContent').textContent=archive?.text||'';
+}
 function renderNotes(d){
  $('notes').innerHTML=!d.available?'<p class="panel-sub">동기화 범위 밖입니다.</p>':d.gaps.length?d.gaps.map(g=>`<div class="gap-row"><b>${kstTime(g.start)} – ${g.end===at(state.date)+DAY_MS?'24:00':kstTime(g.end)}</b><br>${fmtMinutes(Math.round((g.end-g.start)/60000))}</div>`).join(''):'<p class="panel-sub">미확인 구간이 없습니다.</p>';
 }
@@ -136,7 +142,7 @@ function init(){
  state.date=today;state.month=monthKey(today);render();
 }
 $('file').onchange=e=>{selectedFile=e.target.files[0];$('message').textContent=selectedFile?'선택한 암호화 파일을 열려면 암호를 입력하세요.':'암호화 파일을 선택하세요.';};
-$('unlock').onsubmit=async e=>{e.preventDefault();const pass=$('password').value;$('password').value='';try{const envelope=selectedFile?JSON.parse(await selectedFile.text()):await fetch('./report.enc.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();});if(envelope.version!==1||envelope.iterations!==600000||envelope.kdf!=='PBKDF2-SHA256')throw Error();const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']),key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(envelope.salt),iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(envelope.iv)},key,bytes(envelope.ciphertext));data=validate(JSON.parse(new TextDecoder().decode(plain)));demo=false;$('message').textContent=`동기화 완료 · 시간 집계 제외 항목 ${data.excluded||0}개`;state.date=kstDate(Math.min(Date.now(),at(data.coverage.to)-1));state.month=monthKey(state.date);render();$('accessDialog').close();}catch{$('message').textContent='열 수 없습니다. 암호와 암호화 리포트 파일을 확인하세요.';}};
+$('unlock').onsubmit=async e=>{e.preventDefault();const pass=$('password').value;$('password').value='';try{const envelope=selectedFile?JSON.parse(await selectedFile.text()):await fetch('./report.enc.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();});if(envelope.version!==1||envelope.iterations!==600000||envelope.kdf!=='PBKDF2-SHA256')throw Error();const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']),key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(envelope.salt),iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(envelope.iv)},key,bytes(envelope.ciphertext));data=validate(JSON.parse(new TextDecoder().decode(plain)));demo=false;$('message').textContent=`동기화 완료 · 시간 집계 제외 항목 ${data.excluded||0}개`;state.date=data.coverage.from;state.month=monthKey(state.date);render();$('accessDialog').close();}catch{$('message').textContent='열 수 없습니다. 암호와 암호화 리포트 파일을 확인하세요.';}};
 
 $('closeAccess').onclick=()=>$('accessDialog').close();
 $('lock').onclick=()=>{data=structuredClone(sample);demo=true;selectedFile=null;$('file').value='';$('password').value='';$('message').textContent='내 기록을 닫았습니다.';state.date=today;render();$('accessDialog').close();};

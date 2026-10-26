@@ -5,13 +5,13 @@ export function normalize(rows){
  const unique=new Map(); let excluded=0;
  for(const e of rows){
   if(e.status==='cancelled')continue;
-  const role=e.calendar==='Plan'?'plan':/^\[실제\]/.test(e.summary||'')?'actual':null;
+  const role=(e.calendar==='Plan'||e.legacyPlan===true)?'plan':/^\[실제\]/.test(e.summary||'')?'actual':null;
   const start=Date.parse(e.start?.dateTime),end=Date.parse(e.end?.dateTime);
   if(!role||!Number.isFinite(start)||!Number.isFinite(end)||end<=start){excluded++;continue;}
   const category=role==='plan'?'Plan':(categories.includes(e.organizerCategory)?e.organizerCategory:e.calendar);
   if(role==='actual'&&!categories.includes(category)){excluded++;continue;}
   const key=role+'|'+(e.iCalUID||e.id)+'|'+(e.originalStartTime?.dateTime||start);
-  const item={key,role,category,title:(e.summary||'').replace(/^\[실제\]\s*/,''),start,end,updated:e.updated||''};
+  const item={key,role,category,title:(e.summary||'').replace(/^\[실제\]\s*/,''),start,end,note:e.description||'',sourceCalendar:e.calendar,classificationNote:e.classificationNote||'',updated:e.updated||''};
   const prev=unique.get(key);
   if(!prev||item.updated>prev.updated||(item.updated===prev.updated&&e.calendar===category))unique.set(key,item);
  }
@@ -19,7 +19,7 @@ export function normalize(rows){
 }
 export function report(events,date,now=Date.now()){
  const start=dayStart(date),end=start+86400000,cut=Math.max(start,Math.min(end,now));
- const entries=events.filter(e=>e.start<end&&e.end>start).map(e=>({...e,start:Math.max(start,e.start),end:Math.min(end,e.end)}));
+ const entries=events.filter(e=>e.start<(e.role==='actual'?cut:end)&&e.end>start).map(e=>({...e,start:Math.max(start,e.start),end:Math.min(e.role==='actual'?cut:end,e.end)})).sort((a,b)=>a.start-b.start);
  const points=[...new Set([start,cut,...entries.flatMap(e=>[Math.max(start,Math.min(cut,e.start)),Math.max(start,Math.min(cut,e.end))])])].sort((a,b)=>a-b);
  let actual=0,planned=0,overlap=0,conflict=0;const totals=Object.fromEntries(categories.map(c=>[c,0]));const gaps=[];
  for(let i=1;i<points.length;i++){
