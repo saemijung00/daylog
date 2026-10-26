@@ -1,4 +1,5 @@
-import {report,weekDates,validate} from './core.js?v=compare1';
+import {taskReport} from './tasks.js?v=tasks1';
+import {report,weekDates,validate} from './core.js?v=tasks1';
 
 'use strict';
 const CATEGORIES = [
@@ -27,9 +28,9 @@ const weekday=date=>weeks[new Date(at(date,'12:00')).getUTCDay()];
 const category=k=>CATEGORIES.find(c=>c.key===k)||{key:'Plan',label:'Plan',color:'#b7c4da'};
 const minutes=r=>Math.round((r.end-r.start)/60000);
 let state={date:'',view:'day',tab:'actual',filter:'all',query:''};
-let selectedFile=null, demo=true;
+let selectedFile=null, demo=true, reportKey=null, reportEnvelope=null;
 const now=Date.now(),today=kstDate(now);let data={version:1,generatedAt:new Date(now).toISOString(),coverage:{from:weekDates(today)[0],to:kstDate(at(today)+86400000)},events:[]};
-for(const [i,d] of weekDates(today).entries())if(d<=today){for(const [j,c] of ['새미','_N_Vtu','PalM디자인'].entries()){const start=at(d)+(8+j*3)*3600000;data.events.push({key:`sample-${i}-${j}`,role:'actual',category:c,title:['일상 기록 예시','작업 기록 예시','디자인 기록 예시'][j],start,end:start+(1+(i%3)*.5)*3600000});data.events.push({key:`plan-${i}-${j}`,role:'plan',category:'Plan',title:'계획 예시',start,end:start+2*3600000});}}
+for(const [i,d] of weekDates(today).entries())if(d<=today){for(const [j,c] of ['새미','_N_Vtu','PalM디자인'].entries()){const start=at(d)+(8+j*3)*3600000;data.events.push({key:`sample-${i}-${j}`,role:'actual',category:c,title:['일상 기록 예시','작업 기록 예시','디자인 기록 예시'][j],project:j===0?'일상':'샘플 프로젝트',task:['휴식','기획 검토','화면 디자인'][j],start,end:start+(1+(i%3)*.5)*3600000});data.events.push({key:`plan-${i}-${j}`,role:'plan',category:'Plan',title:'계획 예시',project:j===0?'일상':'샘플 프로젝트',task:['휴식','기획 검토','화면 디자인'][j],start,end:start+2*3600000});}}
 const sample=structuredClone(data);
 
 function within(date){return date>=data.coverage.from&&date<data.coverage.to;}
@@ -48,19 +49,20 @@ function render(){
  $('connection').className='live'+(demo?' demo':'');$('connection').lastElementChild.textContent=demo?'샘플 데이터':'Google Calendar 기록';
  $('syncText').textContent=demo?'· 실제 기록이 아닌 샘플입니다.':'· 캘린더를 읽어온 시점 '+new Date(data.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
  $('reportStatus').textContent=!d.available?'동기화 범위 밖 날짜입니다.':(demo?'샘플 · ':'')+(d.closed?'자정 리포트 · 종료된 하루':'진행 중 · 동기화 시점까지 잠정 집계')+' · Asia/Seoul';
+ if(view==='week'||view==='month')$('reportStatus').textContent=(demo?'샘플 · ':'')+'프로젝트별 업무 리포트 · 실제는 동기화 시점까지 · Asia/Seoul';
  $('crumb').textContent=({day:'대시보드',records:'활동 기록',week:'주간 분석',month:'월간 분석',guide:'분류 가이드'})[view];
  const date=state.date,weekdayText=weekday(date),[y,m,dd]=date.split('-');
  $('dateLabel').firstChild.textContent=`${y}. ${Number(m)}. ${Number(dd)}. (${weekdayText})`;$('dateInput').value=date;
- const h=({day:['YOUR DAY, IN FOCUS','하루를 더 선명하게.','계획과 실제를 한눈에 비교하고, 시간의 흐름을 돌아보세요.'],records:['ACTIVITY LOG','하루의 모든 기록.','작업과 휴식, 메모까지 시간순으로 이어집니다.'],week:['WEEKLY OVERVIEW','이번 주의 흐름.','7일 동안의 계획과 실제 시간 차이를 살펴보세요.'],month:['MONTHLY OVERVIEW','시간이 쌓이는 방식.','한 달 동안 기록된 활동을 돌아보고 패턴을 확인하세요.'],guide:['CATEGORY RULES','나만의 분류 기준.','업무 목적에 따라 여섯 개 캘린더를 구분합니다.']})[view];
+ const h=({day:['YOUR DAY, IN FOCUS','하루를 더 선명하게.','계획과 실제를 한눈에 비교하고, 시간의 흐름을 돌아보세요.'],records:['ACTIVITY LOG','하루의 모든 기록.','작업과 휴식, 메모까지 시간순으로 이어집니다.'],week:['WEEKLY PROJECT REVIEW','이번 주, 어떤 일을 했나요?','프로젝트와 업무별 예상·실제 소요시간을 비교하세요.'],month:['MONTHLY PROJECT REVIEW','한 달의 업무를 돌아보세요.','프로젝트별로 쌓인 작업 시간과 예상의 차이를 확인하세요.'],guide:['CATEGORY RULES','나만의 분류 기준.','업무 목적에 따라 여섯 개 캘린더를 구분합니다.']})[view];
  $('headingTop').textContent=h[0];$('mainTitle').textContent=h[1];$('mainSubtitle').textContent=h[2];
  $('timelinePanel').hidden=!(view==='day');$('trendsPanel').hidden=!(view==='week'||view==='month');$('recordsPanel').hidden=view!=='records';$('guidePanel').hidden=view!=='guide';
  $('insightPanel').hidden=view!=='day';
- $('breakdownPanel').hidden=view==='guide';
+ $('breakdownPanel').hidden=view==='guide'||view==='week'||view==='month';
  $('switchView').textContent=view==='week'?'일간 보기 ↗':'주간 보기 ↗';$('switchView').setAttribute('aria-label',view==='week'?'일간 분석 보기':'주간 분석 보기');
- const summary=(view==='week'||view==='month')?periodStats(view):d;renderStats(summary);renderMonth();renderBreakdown(summary);renderInsights(d);renderHistory();renderTimeline(d);renderRecords(d);if(view==='week'||view==='month')renderTrend(view);if(view==='guide')renderGuide();
+ const summary=(view==='week'||view==='month')?periodStats(view):d;renderStats(summary);renderMonth();if(!summary.period)renderBreakdown(summary);renderInsights(d);renderHistory();renderTimeline(d);renderRecords(d);if(view==='week'||view==='month')renderTrend(view);if(view==='guide')renderGuide();
 }
 function renderStats(d){
- const cards=[['확인된 실제 시간',fmtMinutes(d.actualTotal),`${d.count}개 활동 구간 · 겹친 시간은 한 번만`,'briefcase'],['계획 시간',fmtMinutes(d.planned),d.period?'선택한 기간의 계획 합계':'하루 전체 계획 시간','calendar'],['계획 대비 차이',`${d.actualTotal>=d.planned?'+':'−'}${fmtMinutes(Math.abs(d.actualTotal-d.planned))}`,'총시간 차이 · 작업 이행률과는 달라요','chart'],];
+ const cards=[[d.period?'업무 실제 시간':'확인된 실제 시간',fmtMinutes(d.actualTotal),`${d.count}개 활동 구간 · 겹친 시간은 한 번만`,'briefcase'],[d.period?'업무 예상 시간':'계획 시간',fmtMinutes(d.planned),d.period?'선택한 기간의 계획 합계':'하루 전체 계획 시간','calendar'],['계획 대비 차이',`${d.actualTotal>=d.planned?'+':'−'}${fmtMinutes(Math.abs(d.actualTotal-d.planned))}`,'총시간 차이 · 작업 이행률과는 달라요','chart'],];
  $('stats').innerHTML=cards.map(x=>`<article class="stat"><div class="stat-head"><div class="stat-label">${x[0]}</div><div class="stat-icon">${appIcon(x[3])}</div></div><div class="stat-value">${d.available?x[1]:'—'}</div><div class="stat-desc">${x[2]}</div></article>`).join('');
 }
 function renderTimeline(d){
@@ -125,16 +127,33 @@ function periodDays(view){
  const [y,m]=state.date.split('-').map(Number),count=new Date(Date.UTC(y,m,0)).getUTCDate();
  return view==='week'?weekDates(state.date):Array.from({length:count},(_,i)=>`${y}-${pad(m)}-${pad(i+1)}`);
 }
+function workEvents(){return data.events.filter(e=>e.project!=='일상'&&e.category!=='새미');}
 function periodStats(view){
- const rows=periodDays(view).map(date=>datasetStats(date)).filter(d=>d.available);
- return {period:true,available:rows.length>0,actualTotal:rows.reduce((s,d)=>s+d.actualTotal,0),planned:rows.reduce((s,d)=>s+d.planned,0),count:rows.reduce((s,d)=>s+d.count,0),conflict:rows.reduce((s,d)=>s+d.conflict,0),totals:Object.fromEntries(CATEGORIES.map(c=>[c.key,rows.reduce((s,d)=>s+d.totals[c.key],0)]))};
+ const days=periodDays(view),start=at(days[0]),end=at(addDay(days.at(-1),1)),r=taskReport(workEvents(),start,end,Math.min(Date.now(),Date.parse(data.generatedAt)));
+ return {period:true,available:days.some(within),actualTotal:r.actual,planned:r.plan,count:r.tasks.reduce((n,t)=>n+t.events.filter(e=>e.role==='actual').length,0),conflict:0,totals:Object.fromEntries(CATEGORIES.map(c=>[c.key,0]))};
 }
 function renderTrend(view){
- const days=periodDays(view),vals=days.map(date=>({date,...datasetStats(date)})),max=Math.max(60,...vals.flatMap(x=>[x.planned,x.actualTotal]));
- $('trendTitle').textContent=view==='week'?'요일별 계획과 실제':`${Number(state.date.slice(5,7))}월 · 날짜별 계획과 실제`;
- $('trendSubtitle').textContent=`${days[0]} ~ ${days.at(-1)} · 식사·이동 등 전체 활동 포함 · 시간의 양을 비교하며, 작업 완료율은 아니에요.`;
- $('trendChart').innerHTML=`<div class="period-chart">${vals.map(x=>`<button class="period-row" data-day="${x.date}" aria-label="${x.date} ${x.available?'계획 '+fmtMinutes(x.planned)+', 실제 '+fmtMinutes(x.actualTotal):'동기화 범위 밖'}"><span class="period-date">${Number(x.date.slice(8))}일 <small>${weekday(x.date)}</small></span><span class="period-bars"><span class="period-bar plan-bar" style="width:${x.planned/max*100}%"></span><span class="period-bar actual-bar" style="width:${x.actualTotal/max*100}%"></span></span><span class="period-values">${x.available?`${fmtDuration(x.planned)} / ${fmtDuration(x.actualTotal)}<small>${x.closed?'':'진행 중 · '}${x.actualTotal>=x.planned?'+':'−'}${fmtDuration(Math.abs(x.actualTotal-x.planned))}</small>`:'—'}</span></button>`).join('')}</div><p class="period-help">단위: 시간·분 · 위 막대 / 아래 막대 = 계획 / 실제 · 날짜를 누르면 그날의 비교 화면을 엽니다. 동기화 범위 밖은 —로 표시합니다.</p>`;
- $('trendChart').querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{state.date=b.dataset.day;setActiveView('day');});
+ const days=periodDays(view),cutoff=Math.min(Date.now(),Date.parse(data.generatedAt));
+ const r=taskReport(workEvents(),at(days[0]),at(addDay(days.at(-1),1)),cutoff);
+ const signed=n=>(n>0?'+':n<0?'−':'')+fmtMinutes(Math.abs(n));
+ $('trendTitle').textContent=view==='week'?'이번 주 프로젝트별 업무':'이번 달 프로젝트별 업무';
+ $('trendSubtitle').textContent=`${days[0]} ~ ${days.at(-1)} · 기록 범위 ${data.coverage.from} ~ ${addDay(data.coverage.to,-1)} · 실제는 마지막 동기화 시점까지`;
+ $('trendChart').innerHTML=`<div class="work-report"><p class="work-help">업무 기록만 집계하며 일상 활동은 제외합니다. 오차 = 실제 − 예상. +는 예상보다 오래 걸린 시간, −는 예상보다 적게 기록된 시간이에요. 업무를 완료했다는 뜻은 아니에요.</p>${r.projects.map(p=>{
+ const max=Math.max(p.plan,p.actual,1),done=p.tasks.filter(t=>t.actual>0);
+ return `<section class="project-report"><header><div><span class="project-eyebrow">PROJECT</span><h3>${esc(p.project)}</h3></div><strong class="variance ${p.actual>p.plan?'over':''}">${signed(p.actual-p.plan)}</strong></header><p class="project-summary">${done.length?'진행한 업무 · '+done.map(t=>esc(t.task)).join(' / '):'이 기간에 실제 수행 기록이 없습니다.'}</p><div class="project-bars"><label>예상 <span><i style="width:${p.plan/max*100}%"></i></span><b>${fmtMinutes(p.plan)}</b></label><label>실제 <span><i class="actual" style="width:${p.actual/max*100}%"></i></span><b>${fmtMinutes(p.actual)}</b></label></div><div class="task-columns"><span>업무</span><span>예상</span><span>실제</span><span>오차</span></div>${p.tasks.map(t=>{
+ const index=r.tasks.indexOf(t),status=t.plan===0?'계획 없이 기록됨':t.actual===0?'실제 기록 없음':Math.abs(t.delta)<.01?'예상 시간과 같음':t.delta>0?'예상보다 오래 기록됨':'예상보다 적게 기록됨';
+ return `<details class="task-item"><summary><span><b>${esc(t.task)}</b><small>${status}</small></span><span>${fmtMinutes(t.plan)}</span><span>${fmtMinutes(t.actual)}</span><span class="variance ${t.delta>0?'over':''}">${signed(t.delta)}</span></summary><div class="task-details">${t.id==='conflicts'?'<p>서로 다른 업무가 동시에 기록된 시간입니다. 각 업무의 합계에서 빼고 여기에 한 번만 집계했어요.</p>':`<div class="task-editor"><label>프로젝트<input data-project="${index}" value="${esc(t.project)}" maxlength="120"></label><label>업무<input data-task="${index}" value="${esc(t.task)}" maxlength="120"></label><button class="outline-btn" data-regroup="${index}">분류 적용</button></div><p>같은 프로젝트·업무 이름으로 바꾸면 합쳐져요. 원본 캘린더는 바뀌지 않습니다.</p>`}${t.events.map(e=>`<div class="task-source"><span>${kstDate(e.start)} · ${e.role==='plan'?'계획':'실제'} · ${kstTime(e.start)}–${kstDate(e.end)!==kstDate(e.start)?kstDate(e.end)+' ':''}${kstTime(e.end)}</span><b>${esc(e.title)}</b><small>${fmtMinutes((e.end-e.start)/60000)}</small></div>`).join('')}</div></details>`;
+ }).join('')}</section>`;
+ }).join('')||empty('이 기간에는 기록이 없어요.')}<div class="work-save"><span>프로젝트가 불명확하거나 여러 업무가 섞인 일정은 분류 전으로 남깁니다. 분류 변경은 현재 화면에 적용되며, 파일로 저장하면 다음에도 이어서 볼 수 있어요.</span>${demo?'':'<button class="outline-btn" id="saveTaskReport">분류한 리포트 저장</button>'}<span id="saveTaskStatus" role="status"></span></div></div>`;
+ $('trendChart').querySelectorAll('[data-regroup]').forEach(button=>button.onclick=()=>{
+ const index=Number(button.dataset.regroup),task=r.tasks[index],project=$('trendChart').querySelector(`[data-project="${index}"]`).value.trim(),name=$('trendChart').querySelector(`[data-task="${index}"]`).value.trim();
+ if(!project||!name)return;
+ const keys=new Set(task.events.map(e=>e.key));data.events.forEach(e=>{if(keys.has(e.key)){e.project=project;e.task=name;}});render();
+ });
+ if($('saveTaskReport'))$('saveTaskReport').onclick=async()=>{try{
+ const iv=crypto.getRandomValues(new Uint8Array(12)),cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},reportKey,new TextEncoder().encode(JSON.stringify(data))),b64=bytes=>{let str='';for(const byte of bytes)str+=String.fromCharCode(byte);return btoa(str);};
+ const envelope={...reportEnvelope,iv:b64(iv),ciphertext:b64(new Uint8Array(cipher))},url=URL.createObjectURL(new Blob([JSON.stringify(envelope)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='daylog-project-report.enc.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('saveTaskStatus').textContent='암호화 파일을 저장했습니다. 기존 리포트 암호로 열 수 있어요.';
+ }catch{$('saveTaskStatus').textContent='저장하지 못했습니다. 리포트를 다시 열고 시도해 주세요.';}};
 }
 function renderGuide(){$('guideContent').innerHTML=CATEGORIES.map(c=>`<div class="guide-item"><h4><i style="background:${c.color}"></i>${esc(c.label)}</h4><p>${esc(c.desc)}</p></div>`).join('')}
 function init(){
@@ -153,8 +172,8 @@ function init(){
  state.date=today;state.month=monthKey(today);render();
 }
 $('file').onchange=e=>{selectedFile=e.target.files[0];$('message').textContent=selectedFile?'선택한 암호화 파일을 열려면 암호를 입력하세요.':'암호화 파일을 선택하세요.';};
-$('unlock').onsubmit=async e=>{e.preventDefault();const pass=$('password').value;$('password').value='';try{const envelope=selectedFile?JSON.parse(await selectedFile.text()):await fetch('./report.enc.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();});if(envelope.version!==1||envelope.iterations!==600000||envelope.kdf!=='PBKDF2-SHA256')throw Error();const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']),key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(envelope.salt),iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(envelope.iv)},key,bytes(envelope.ciphertext));data=validate(JSON.parse(new TextDecoder().decode(plain)));demo=false;$('message').textContent=`동기화 완료 · 시간 집계 제외 항목 ${data.excluded||0}개`;state.date=data.coverage.from;state.month=monthKey(state.date);render();$('accessDialog').close();}catch{$('message').textContent='열 수 없습니다. 암호와 암호화 리포트 파일을 확인하세요.';}};
+$('unlock').onsubmit=async e=>{e.preventDefault();const pass=$('password').value;$('password').value='';try{const envelope=selectedFile?JSON.parse(await selectedFile.text()):await fetch('./report.enc.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();});if(envelope.version!==1||envelope.iterations!==600000||envelope.kdf!=='PBKDF2-SHA256')throw Error();const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']),key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(envelope.salt),iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt','encrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(envelope.iv)},key,bytes(envelope.ciphertext));data=validate(JSON.parse(new TextDecoder().decode(plain)));reportKey=key;reportEnvelope={version:envelope.version,kdf:envelope.kdf,iterations:envelope.iterations,salt:envelope.salt};demo=false;$('message').textContent=`동기화 완료 · 시간 집계 제외 항목 ${data.excluded||0}개`;state.date=data.coverage.from;state.month=monthKey(state.date);render();$('accessDialog').close();}catch{$('message').textContent='열 수 없습니다. 암호와 암호화 리포트 파일을 확인하세요.';}};
 
 $('closeAccess').onclick=()=>$('accessDialog').close();
-$('lock').onclick=()=>{data=structuredClone(sample);demo=true;selectedFile=null;$('file').value='';$('password').value='';$('message').textContent='내 기록을 닫았습니다.';state.date=today;render();$('accessDialog').close();};
+$('lock').onclick=()=>{data=structuredClone(sample);reportKey=null;reportEnvelope=null;demo=true;selectedFile=null;$('file').value='';$('password').value='';$('message').textContent='내 기록을 닫았습니다.';state.date=today;render();$('accessDialog').close();};
 init();
