@@ -44,8 +44,8 @@
     </div>
   </div>
   <div class="appnotice">DAYMARK · <strong>계획은 계획대로, 실제는 실제대로.</strong> 모든 원본 기록은 Google Calendar에 유지됩니다. <span id="syncText"></span></div>
-<dialog id="accessDialog"><form id="unlock"><div class="panel-head"><div><h2 class="panel-title">내 기록 열기</h2><p class="panel-sub">암호화한 파일을 이 브라우저 안에서 열어요.</p></div><button type="button" class="iconbutton" id="closeAccess" aria-label="닫기">×</button></div><label class="access-label">다른 리포트 파일 (선택 사항)<input id="file" type="file" accept="application/json,.json"></label><label class="access-label">리포트 암호<input id="password" type="password" autocomplete="off" minlength="20" required></label><p class="panel-sub" id="message" role="status">전달받은 암호화 리포트 파일을 선택하고 암호를 입력하세요. 기록은 읽어온 시점의 사본이며 자동 갱신되지 않습니다. 암호와 기록은 브라우저에 저장하지 않습니다.</p><div class="access-actions"><button type="button" id="lock" class="outline-btn">기록 잠그기</button><button class="outline-btn primary">열기</button></div></form></dialog></main>
+<dialog id="accessDialog"><form id="unlock"><div class="panel-head"><div><h2 class="panel-title">내 기록 열기</h2><p class="panel-sub">암호화한 파일을 이 브라우저 안에서 열어요.</p></div><button type="button" class="iconbutton" id="closeAccess" aria-label="닫기">×</button></div><label class="access-label">다른 리포트 파일 (선택 사항)<input id="file" type="file" accept="application/json,.json"></label><label class="access-label">리포트 암호<input id="password" type="password" autocomplete="off" minlength="20" required></label><p class="panel-sub" id="message" role="status">암호화된 기록만 이 브라우저에 보관합니다. 암호와 복호화한 내용은 저장하지 않습니다. 새 대화 내용은 자동 수신되지 않으며, 가져온 시점까지 표시됩니다.</p><div class="access-actions"><button type="button" id="forget" class="outline-btn">저장된 기록 지우기</button><button type="button" id="lock" class="outline-btn">기록 잠그기</button><button class="outline-btn primary">열기</button></div></form></dialog></main>
 </div>
-<script type="module" src="app.daymark.js?v=tasks1"></script>
+<script type="module" src="app.daymark.js?v=connected1"></script>
 </body>
 </html>

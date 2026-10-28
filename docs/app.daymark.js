@@ -29,6 +29,9 @@ const category=k=>CATEGORIES.find(c=>c.key===k)||{key:'Plan',label:'Plan',color:
 const minutes=r=>Math.round((r.end-r.start)/60000);
 let state={date:'',view:'day',tab:'actual',filter:'all',query:''};
 let selectedFile=null, demo=true, reportKey=null, reportEnvelope=null;
+const cacheName='daymark.encrypted-report.v1';
+function cachedReport(){try{return JSON.parse(localStorage.getItem(cacheName)||'null');}catch{return null;}}
+function keepEncrypted(envelope){try{localStorage.setItem(cacheName,JSON.stringify(envelope));return true;}catch{return false;}}
 const now=Date.now(),today=kstDate(now);let data={version:1,generatedAt:new Date(now).toISOString(),coverage:{from:weekDates(today)[0],to:kstDate(at(today)+86400000)},events:[]};
 for(const [i,d] of weekDates(today).entries())if(d<=today){for(const [j,c] of ['새미','_N_Vtu','PalM디자인'].entries()){const start=at(d)+(8+j*3)*3600000;data.events.push({key:`sample-${i}-${j}`,role:'actual',category:c,title:['일상 기록 예시','작업 기록 예시','디자인 기록 예시'][j],project:j===0?'일상':'샘플 프로젝트',task:['휴식','기획 검토','화면 디자인'][j],start,end:start+(1+(i%3)*.5)*3600000});data.events.push({key:`plan-${i}-${j}`,role:'plan',category:'Plan',title:'계획 예시',project:j===0?'일상':'샘플 프로젝트',task:['휴식','기획 검토','화면 디자인'][j],start,end:start+2*3600000});}}
 const sample=structuredClone(data);
@@ -46,8 +49,8 @@ function changeMonth(step){const [y,m]=state.date.slice(0,7).split('-').map(Numb
 function render(){
  
  const view=state.view,d=datasetStats();
- $('connection').className='live'+(demo?' demo':'');$('connection').lastElementChild.textContent=demo?'샘플 데이터':'Google Calendar 기록';
- $('syncText').textContent=demo?'· 실제 기록이 아닌 샘플입니다.':'· 캘린더를 읽어온 시점 '+new Date(data.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
+ $('connection').className='live'+(demo?' demo':'');$('connection').lastElementChild.textContent=demo?'샘플 데이터':'내 기록 연결됨';
+ $('syncText').textContent=demo?'· 실제 기록이 아닌 샘플입니다.':'· 대화·캘린더 반영 '+new Date(data.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
  $('reportStatus').textContent=!d.available?'동기화 범위 밖 날짜입니다.':(demo?'샘플 · ':'')+(d.closed?'자정 리포트 · 종료된 하루':'진행 중 · 동기화 시점까지 잠정 집계')+' · Asia/Seoul';
  if(view==='week'||view==='month')$('reportStatus').textContent=(demo?'샘플 · ':'')+'프로젝트별 업무 리포트 · 실제는 동기화 시점까지 · Asia/Seoul';
  $('crumb').textContent=({day:'대시보드',records:'활동 기록',week:'주간 분석',month:'월간 분석',guide:'분류 가이드'})[view];
@@ -152,7 +155,7 @@ function renderTrend(view){
  });
  if($('saveTaskReport'))$('saveTaskReport').onclick=async()=>{try{
  const iv=crypto.getRandomValues(new Uint8Array(12)),cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},reportKey,new TextEncoder().encode(JSON.stringify(data))),b64=bytes=>{let str='';for(const byte of bytes)str+=String.fromCharCode(byte);return btoa(str);};
- const envelope={...reportEnvelope,iv:b64(iv),ciphertext:b64(new Uint8Array(cipher))},url=URL.createObjectURL(new Blob([JSON.stringify(envelope)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='daylog-project-report.enc.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('saveTaskStatus').textContent='암호화 파일을 저장했습니다. 기존 리포트 암호로 열 수 있어요.';
+ const envelope={...reportEnvelope,iv:b64(iv),ciphertext:b64(new Uint8Array(cipher))};keepEncrypted(envelope);const url=URL.createObjectURL(new Blob([JSON.stringify(envelope)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='daylog-project-report.enc.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('saveTaskStatus').textContent='이 브라우저의 기록을 갱신하고 암호화 파일을 저장했습니다. 기존 암호로 열 수 있어요.';
  }catch{$('saveTaskStatus').textContent='저장하지 못했습니다. 리포트를 다시 열고 시도해 주세요.';}};
 }
 function renderGuide(){$('guideContent').innerHTML=CATEGORIES.map(c=>`<div class="guide-item"><h4><i style="background:${c.color}"></i>${esc(c.label)}</h4><p>${esc(c.desc)}</p></div>`).join('')}
@@ -167,13 +170,14 @@ function init(){
  $('recordTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b){state.tab=b.dataset.tab;renderRecords(datasetStats());}});
  $('searchInput').addEventListener('input',e=>{state.query=e.target.value;renderRecords(datasetStats());});
  $('catFilter').addEventListener('change',e=>{state.filter=e.target.value;renderRecords(datasetStats());});
- $('refreshBtn').addEventListener('click',()=>$('accessDialog').showModal());
+ $('refreshBtn').addEventListener('click',()=>{$('message').textContent=cachedReport()?'이 브라우저에 저장된 기록을 암호로 여세요. 새 파일을 선택하면 최신 기록으로 바뀝니다.':'암호화 리포트를 한 번 연결하면 다음에는 파일 선택 없이 암호만 입력하면 됩니다.';$('accessDialog').showModal();});
  $('switchView').addEventListener('click',()=>setActiveView(state.view==='week'?'day':'week'));
- state.date=today;state.month=monthKey(today);render();
+ state.date=today;state.month=monthKey(today);render();if(cachedReport()){$('connection').lastElementChild.textContent='내 기록 저장됨 · 잠김';$('message').textContent='저장된 기록이 있습니다. 암호를 입력하면 파일 선택 없이 열립니다.';$('accessDialog').showModal();}
 }
 $('file').onchange=e=>{selectedFile=e.target.files[0];$('message').textContent=selectedFile?'선택한 암호화 파일을 열려면 암호를 입력하세요.':'암호화 파일을 선택하세요.';};
-$('unlock').onsubmit=async e=>{e.preventDefault();const pass=$('password').value;$('password').value='';try{const envelope=selectedFile?JSON.parse(await selectedFile.text()):await fetch('./report.enc.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();});if(envelope.version!==1||envelope.iterations!==600000||envelope.kdf!=='PBKDF2-SHA256')throw Error();const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']),key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(envelope.salt),iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt','encrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(envelope.iv)},key,bytes(envelope.ciphertext));data=validate(JSON.parse(new TextDecoder().decode(plain)));reportKey=key;reportEnvelope={version:envelope.version,kdf:envelope.kdf,iterations:envelope.iterations,salt:envelope.salt};demo=false;$('message').textContent=`동기화 완료 · 시간 집계 제외 항목 ${data.excluded||0}개`;state.date=data.coverage.from;state.month=monthKey(state.date);render();$('accessDialog').close();}catch{$('message').textContent='열 수 없습니다. 암호와 암호화 리포트 파일을 확인하세요.';}};
+$('unlock').onsubmit=async e=>{e.preventDefault();const pass=$('password').value;$('password').value='';try{const envelope=selectedFile?JSON.parse(await selectedFile.text()):cachedReport()||await fetch('./report.enc.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();});if(envelope.version!==1||envelope.iterations!==600000||envelope.kdf!=='PBKDF2-SHA256')throw Error();const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']),key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(envelope.salt),iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt','encrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(envelope.iv)},key,bytes(envelope.ciphertext));data=validate(JSON.parse(new TextDecoder().decode(plain)));reportKey=key;reportEnvelope={version:envelope.version,kdf:envelope.kdf,iterations:envelope.iterations,salt:envelope.salt};demo=false;const savedHere=keepEncrypted(envelope);$('message').textContent=`동기화 완료 · 시간 집계 제외 항목 ${data.excluded||0}개`;state.date=kstDate(Math.min(Date.now(),at(data.coverage.to)-1));state.month=monthKey(state.date);render();$('accessDialog').close();if(!savedHere)$('syncText').textContent+=' · 브라우저 저장 공간을 사용할 수 없어 파일을 다시 열어야 합니다.';}catch{$('message').textContent='열 수 없습니다. 암호와 암호화 리포트 파일을 확인하세요.';}};
 
+$('forget').onclick=()=>{try{localStorage.removeItem(cacheName);}catch{}$('lock').click();$('message').textContent='이 브라우저에 저장된 기록을 지웠습니다.';};
 $('closeAccess').onclick=()=>$('accessDialog').close();
 $('lock').onclick=()=>{data=structuredClone(sample);reportKey=null;reportEnvelope=null;demo=true;selectedFile=null;$('file').value='';$('password').value='';$('message').textContent='내 기록을 닫았습니다.';state.date=today;render();$('accessDialog').close();};
 init();
