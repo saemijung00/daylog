@@ -1,7 +1,9 @@
 import {readFile,mkdir,writeFile,rename} from 'node:fs/promises';
-import {normalize,dayStart} from '../docs/core.js';import {encrypt} from './crypto.mjs';
+import {normalize,dayStart,dateKey} from '../docs/core.js';import {encrypt} from './crypto.mjs';
 const config=JSON.parse(await readFile(process.argv[2]||'private/config.json','utf8'));
+config.to ||= dateKey(Date.now()+2*86400000);
 const {GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REFRESH_TOKEN,REPORT_PASSWORD}=process.env;
+if(!REPORT_PASSWORD||REPORT_PASSWORD.length<20)throw Error('20자 이상의 고유한 리포트 암호가 필요합니다');
 if(!config.from||!config.to||dayStart(config.to)<=dayStart(config.from)||!Array.isArray(config.calendars)||!config.calendars.some(c=>c.name==='Plan'))throw Error('설정을 확인하세요');
 if(!GOOGLE_CLIENT_ID||!GOOGLE_CLIENT_SECRET||!GOOGLE_REFRESH_TOKEN)throw Error('비공개 환경에 Google 인증 설정이 필요합니다');
 async function jsonFetch(url,options){const r=await fetch(url,options);if(!r.ok)throw Error('동기화 실패: HTTP '+r.status);return r.json();}

@@ -58,3 +58,9 @@ Node.js 22 이상: `npm test`
 - OAuth 범위: https://developers.google.com/workspace/calendar/api/auth
 - Pages 접근 범위: https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages
 - 예약 실행 지연: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+
+## 자동 동기화 연결 (calendar-sync.yml)
+
+매시 10분에 전체 보존 범위를 다시 읽고, 암호화 성공 후에만 Pages 산출물을 배포합니다. 실패하면 기존 사이트를 유지합니다. `to`를 생략하면 한국 날짜 기준 모레 00:00까지 자동 확장합니다. `from`은 최초 보존 날짜로 고정하세요. 사이트는 5분마다 새 암호화 파일을 확인하며 암호 입력 시 서버의 최신 파일을 우선합니다. 암호는 보관하지 않으므로 새 결과를 열 때 다시 입력합니다.
+
+저장소 Actions secrets에 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `REPORT_PASSWORD`, `CALENDAR_CONFIG`가 필요합니다. 마지막 값은 실제 7개 캘린더 ID와 `from`이 들어간 config.example.json 형식 JSON입니다. 개인 ID를 example 파일이나 공개 커밋에 쓰지 마세요. ChatGPT Calendar 연결의 인증은 GitHub 실행 환경에 전달되지 않으므로 별도 오프라인 읽기 전용 OAuth 인증이 필요합니다. 이 저장소의 Pages source를 GitHub Actions로 설정하고 Actions의 Private Calendar sync and Pages를 수동 실행하여 첫 배포를 확인하세요. 인증/설정이 없으면 작업은 명시적으로 실패하고 샘플을 실제 기록이라고 표시하지 않습니다.
